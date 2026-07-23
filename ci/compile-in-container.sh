@@ -27,34 +27,17 @@ features="$(grep -vE '^\s*(#|$)' /work/ci/features-fips.txt | tr '\n' ',' | sed 
 [ -n "$features" ] || { echo "compile: empty feature list" >&2; exit 1; }
 echo "== features: $features"
 
-# --- patch: drop tonic's rustls-based tls features --------------------------
-# Vector terminates gRPC TLS itself via its OpenSSL MaybeTlsSettings; the
-# workspace tonic declaration enables tonic's own rustls stack, which would
-# put rustls+ring in every gRPC component's dependency closure. Exact-match
-# so a version bump that changes this line fails loudly for review.
-old='tonic = { version = "0.11", default-features = false, features = ["transport", "codegen", "prost", "tls", "tls-roots", "gzip", "zstd"] }'
-new='tonic = { version = "0.11", default-features = false, features = ["transport", "codegen", "prost", "gzip", "zstd"] }'
-if grep -qF "$new" Cargo.toml; then
-  echo "== tonic patch already applied"
-else
-  grep -qF "$old" Cargo.toml || { echo "compile: tonic line changed upstream — review the patch" >&2; exit 1; }
-  python3 - "$old" "$new" <<'EOF'
-import sys
-old, new = sys.argv[1], sys.argv[2]
-s = open('Cargo.toml').read()
-assert s.count(old) == 1
-open('Cargo.toml', 'w').write(s.replace(old, new))
-EOF
-  echo "== tonic patch applied (removed features: tls, tls-roots)"
-fi
+# --- source patches (shared with the audit: ci/apply-source-patches.sh) -----
+bash /work/ci/apply-source-patches.sh
 
-# Settle Cargo.lock after the patch (dropping features can only REMOVE
-# packages from the max resolve graph). Gate: the lock diff must not ADD
-# any package — additions would mean the resolution changed beyond the
-# intended removal.
+# Settle Cargo.lock after the patches. Feature drops can only REMOVE
+# packages from the max resolve graph, and the vrl [patch] rewrites vrl's
+# source to the vendored path. Gate: the lock diff must not ADD any package
+# — additions would mean the resolution changed beyond the intended
+# removals/substitution.
 cargo tree -p vector --no-default-features --prefix none -q >/dev/null
 if git diff Cargo.lock | grep -E '^\+name = '; then
-  echo "compile: Cargo.lock gained packages after tonic patch — abort" >&2
+  echo "compile: Cargo.lock gained packages after source patches — abort" >&2
   exit 1
 fi
 echo "== lock settled ($(git diff --numstat Cargo.lock | awk '{print $2" removals, "$1" additions"}'))"
@@ -109,7 +92,12 @@ print(json.dumps({
     "openssl_src_version": openssl_src,
     "vrl_git_commit": vrl_pin,
     "cargo_features": sorted(features.split(',')),
-    "patches": ["tonic: removed rustls-based 'tls','tls-roots' features (gRPC TLS is via vector's OpenSSL MaybeTlsSettings)"],
+    "patches": [
+        "tonic: removed rustls-based 'tls','tls-roots' features (gRPC TLS is via vector's OpenSSL MaybeTlsSettings)",
+        "reqwest_13: made optional, gated behind excluded sinks-azure_blob (was unconditionally dragging the rustls 0.23 stack)",
+        "vrl@" + os.environ.get('VRL_COMMIT', 'unknown')[:9] + ": community_id() stdlib function removed (RustCrypto SHA-1)",
+        "headers@0.3.9: SecWebsocketAccept type + sha1 dependency removed (websocket handshake SHA-1; no websocket component in the feature set)",
+    ],
     "profile_overrides": {"lto": "thin (upstream: fat; RAM-bound builders; perf-only deviation)",
                           "codegen-units": 16},
 }, indent=2))

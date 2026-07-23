@@ -49,8 +49,14 @@ wait_running_api() { # wait_running_api <container> <max-seconds> — vector API
 }
 
 echo "== prep: self-signed RSA-2048/SHA-256 cert + TLS overlay config"
-openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 2 \
-  -keyout "$tmp/key.pem" -out "$tmp/crt.pem" -subj "/CN=localhost" >/dev/null 2>&1
+# Generated with the IMAGE's openssl under the image's FIPS config — portable
+# (host openssl may be LibreSSL without -addext) and an extra provider
+# exercise. SAN required: modern verification ignores CN.
+docker run --rm --entrypoint /usr/bin/openssl -u 0 -v "$tmp:/v" "$image" \
+  req -x509 -newkey rsa:2048 -sha256 -nodes -days 2 \
+  -keyout /v/key.pem -out /v/crt.pem -subj "/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost" >/dev/null 2>&1
+[ -s "$tmp/crt.pem" ] || { echo "FAIL: cert generation in image failed" >&2; exit 1; }
 cat > "$tmp/tls.yaml" <<'EOF'
 api:
   enabled: true
@@ -124,7 +130,7 @@ docker rm -f "$c1" >/dev/null 2>&1 || true
 
 echo "== 2. non-vacuous negative: provider dir empty -> TLS must fail"
 docker rm -f "$c2" >/dev/null 2>&1 || true
-docker run -d --name "$c2" -v "$tmp:/validate:ro" -e OPENSSL_MODULES=/var/empty \
+docker run -d --name "$c2" -v "$tmp:/validate:ro" -e OPENSSL_MODULES=/tmp/no-modules \
   "$image" -c /validate/tls.yaml >/dev/null
 neg_ok=1
 for _ in $(seq 1 10); do

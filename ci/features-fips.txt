@@ -1,0 +1,107 @@
+# Cargo feature allowlist for the FIPS vector build (ci/compile-in-container.sh
+# joins non-comment lines with commas). Derived from the per-feature crypto
+# dependency audit (`make audit`, ci/audit-features.sh): every component of
+# upstream's default GA build is KEPT unless its dependency closure introduces
+# a crate from ci/forbidden-crates.txt. The removals and their offending
+# dependency chains are documented in docs/removed-functionality.md — keep
+# the three files in sync.
+#
+# --- core / shared -----------------------------------------------------------
+api
+api-client
+enrichment-tables
+codecs-syslog
+codecs-opentelemetry
+codecs-parquet
+tikv-jemallocator
+# VRL: base stdlib + env + system function groups. The crypto group
+# (RustCrypto md5/sha*/hmac/encrypt/...) and network group (reqwest w/ rustls)
+# are the removals — see docs/removed-functionality.md.
+vrl-functions-env
+vrl-functions-system
+#
+# --- sources -----------------------------------------------------------------
+sources-amqp
+sources-apache_metrics
+sources-datadog_agent
+sources-demo_logs
+sources-eventstoredb_metrics
+sources-exec
+sources-file
+sources-file_descriptor
+sources-fluent
+sources-gcp_pubsub
+sources-heroku_logs
+sources-host_metrics
+sources-http_client
+sources-http_server
+sources-internal_logs
+sources-internal_metrics
+sources-static_metrics
+sources-journald
+sources-kafka
+sources-kubernetes_logs
+sources-logstash
+sources-nginx_metrics
+sources-okta
+sources-opentelemetry
+sources-prometheus
+sources-redis
+sources-socket
+sources-splunk_hec
+sources-statsd
+sources-stdin
+sources-syslog
+sources-vector
+#
+# --- transforms (all of upstream's set — none pull forbidden crypto) ---------
+transforms-aggregate
+transforms-aws_ec2_metadata
+transforms-dedupe
+transforms-delay
+transforms-filter
+transforms-incremental_to_absolute
+transforms-window
+transforms-log_to_metric
+transforms-lua
+transforms-metric_to_log
+transforms-reduce
+transforms-remap
+transforms-route
+transforms-sample
+transforms-tag_cardinality_limit
+transforms-throttle
+transforms-trace_to_log
+#
+# --- sinks -------------------------------------------------------------------
+sinks-amqp
+sinks-axiom
+sinks-blackhole
+sinks-clickhouse
+sinks-console
+sinks-datadog_events
+sinks-datadog_logs
+sinks-datadog_metrics
+sinks-datadog_traces
+sinks-elasticsearch
+sinks-file
+sinks-gcp
+sinks-honeycomb
+sinks-http
+sinks-humio
+sinks-influxdb
+sinks-kafka
+sinks-keep
+sinks-mezmo
+sinks-loki
+sinks-new_relic
+sinks-new_relic_logs
+sinks-opentelemetry
+sinks-papertrail
+sinks-prometheus
+sinks-redis
+sinks-sematext
+sinks-socket
+sinks-splunk_hec
+sinks-statsd
+sinks-vector

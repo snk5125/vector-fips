@@ -16,7 +16,7 @@ ARCH="${ARCH:-$(uname -m | sed -e 's/x86_64/amd64/' -e 's/aarch64/arm64/')}"
 BUILDER_IMAGE="${BUILDER_IMAGE:-vector-fips/builder:local}"
 
 src="$here/build/src"
-mkdir -p build/{cargo,target,artifacts}
+mkdir -p build/{cargo,target,artifacts,vrl-patched,headers-patched}
 
 # Reuse an existing artifact only when its manifest matches the pins.
 if [ -x build/artifacts/vector ] && [ -f build/artifacts/build-manifest.json ] \
@@ -52,8 +52,11 @@ docker run --rm \
   -v "$here/build/cargo:/work/cargo" \
   -v "$here/build/target:/work/target" \
   -v "$here/build/artifacts:/work/artifacts" \
+  -v "$here/build/vrl-patched:/work/vrl-patched" \
+  -v "$here/build/headers-patched:/work/headers-patched" \
   -v "$here/ci:/work/ci:ro" \
   -e VECTOR_TAG="$VECTOR_TAG" \
+  -e VRL_COMMIT="$VRL_COMMIT" \
   ${CARGO_BUILD_JOBS:+-e CARGO_BUILD_JOBS="$CARGO_BUILD_JOBS"} \
   "$BUILDER_IMAGE" bash /work/ci/compile-in-container.sh
 

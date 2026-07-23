@@ -5,14 +5,16 @@
 # (ci/compile-in-container.sh). One crate name per line; '#' comments.
 #
 # TLS stacks with their own crypto (not FIPS-validatable here):
+# (rustls-pemfile and rustls-native-certs are deliberately NOT listed: they
+# are PEM parsing / cert-store discovery helpers with no cryptographic
+# primitives, and reqwest 0.11's native-tls path — a non-optional vector
+# dependency — carries rustls-pemfile for identity parsing.)
 ring
 aws-lc-rs
 aws-lc-sys
 aws-lc-fips-sys
 rustls
-rustls-pemfile
 rustls-webpki
-rustls-native-certs
 tokio-rustls
 hyper-rustls
 boring

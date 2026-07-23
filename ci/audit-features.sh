@@ -30,22 +30,23 @@ fi
 [ "$(git -C "$src" rev-parse HEAD)" = "$VECTOR_COMMIT" ] || { echo "audit: source commit mismatch" >&2; exit 1; }
 git -C "$src" checkout -q -- Cargo.toml Cargo.lock 2>/dev/null || true
 
-mkdir -p build/{cargo,audit}
+mkdir -p build/{cargo,audit,vrl-patched,headers-patched}
 docker run --rm \
   --platform "linux/$ARCH" \
   -v "$src:/work/src" \
   -v "$here/build/cargo:/work/cargo" \
   -v "$here/build/audit:/work/audit" \
+  -v "$here/build/vrl-patched:/work/vrl-patched" \
+  -v "$here/build/headers-patched:/work/headers-patched" \
   -v "$here/ci:/work/ci:ro" \
+  -e VRL_COMMIT="$VRL_COMMIT" \
   "$BUILDER_IMAGE" bash -c '
 set -euo pipefail
 export CARGO_HOME=/work/cargo PATH=/opt/cargo/bin:$PATH RUSTUP_TOOLCHAIN=1.95.0
 cd /work/src
 
-# same tonic patch as the real build (ci/compile-in-container.sh)
-old="tonic = { version = \"0.11\", default-features = false, features = [\"transport\", \"codegen\", \"prost\", \"tls\", \"tls-roots\", \"gzip\", \"zstd\"] }"
-new="tonic = { version = \"0.11\", default-features = false, features = [\"transport\", \"codegen\", \"prost\", \"gzip\", \"zstd\"] }"
-grep -qF "$new" Cargo.toml || { grep -qF "$old" Cargo.toml && sed -i "s|$(printf "%s" "$old" | sed "s/[[\.*^$/]/\\\\&/g")|$new|" Cargo.toml; }
+# identical source patches to the real build
+bash /work/ci/apply-source-patches.sh
 cargo tree -p vector --no-default-features --prefix none -q >/dev/null 2>&1 || true
 
 FORBID="^($(grep -vE "^\s*(#|$)" /work/ci/forbidden-crates.txt | tr "\n" "|" | sed "s/|$//")) "
