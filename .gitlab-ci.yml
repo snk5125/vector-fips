@@ -1,0 +1,105 @@
+# ============================================================================
+# vector-fips pipeline: lint -> validate -> publish
+# Every job body is a ci/*.sh script — the runner is thin and the whole
+# pipeline reproduces locally with `make lint build validate`.
+# ============================================================================
+
+stages: [lint, validate, publish]
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_TAG
+
+.docker:
+  image: docker:27
+  services: [docker:27-dind]
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "/certs/client"
+
+lint:
+  extends: .docker
+  stage: lint
+  script:
+    - apk add --no-cache bash shellcheck
+    - ./ci/lint.sh
+
+build-validate:
+  extends: .docker
+  stage: validate
+  script:
+    - apk add --no-cache bash curl git make
+    - version="${CI_COMMIT_TAG:-sha-$CI_COMMIT_SHORT_SHA}"
+    - ARCH=amd64 IMAGE="$CI_REGISTRY_IMAGE" ./ci/build.sh "$version"
+    - ./ci/validate.sh "$CI_REGISTRY_IMAGE:$version"
+  cache:
+    key: vector-build-$CI_DEFAULT_BRANCH
+    paths: [build/artifacts/, build/cargo/]
+
+# Patched-base refresh (GitLab side): build + scan + publish only. The
+# Containerfile digest pin is managed by the GitHub base workflow — this job
+# keeps a registry-local copy for GitLab-hosted deployments.
+# Trigger via a pipeline schedule or by setting BASE_REFRESH=1.
+base:
+  extends: .docker
+  stage: validate
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - if: $BASE_REFRESH == "1"
+  script:
+    - apk add --no-cache bash git
+    - datetag=$(date -u +%Y-%m-%d)
+    - ARCH=amd64 BASE_IMAGE_REPO="$CI_REGISTRY_IMAGE/ubi9-patched" ./ci/build-base.sh "$datetag"
+    - ./ci/scan.sh "$CI_REGISTRY_IMAGE/ubi9-patched:$datetag"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - docker push "$CI_REGISTRY_IMAGE/ubi9-patched:$datetag"
+    - docker push "$CI_REGISTRY_IMAGE/ubi9-patched:latest"
+  artifacts:
+    when: always
+    paths:
+      - build/scan/trivy.sarif
+      - build/scan/trivy.json
+    expire_in: 90 days
+
+scan:
+  extends: .docker
+  stage: validate
+  needs: [build-validate]
+  script:
+    - apk add --no-cache bash git
+    - version="${CI_COMMIT_TAG:-sha-$CI_COMMIT_SHORT_SHA}"
+    # dind is a fresh daemon per job: rebuild (cache-hot via build cache)
+    - ARCH=amd64 IMAGE="$CI_REGISTRY_IMAGE" ./ci/build.sh "$version"
+    - ./ci/scan.sh "$CI_REGISTRY_IMAGE:$version"
+  cache:
+    key: vector-build-$CI_DEFAULT_BRANCH
+    paths: [build/artifacts/, build/cargo/]
+  artifacts:
+    when: always
+    paths:
+      - build/scan/trivy.sarif
+      - build/scan/trivy.json
+    expire_in: 90 days
+
+publish:
+  extends: .docker
+  stage: publish
+  needs: [build-validate, scan]
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - apk add --no-cache bash curl git
+    - version="${CI_COMMIT_TAG:-sha-$CI_COMMIT_SHORT_SHA}"
+    # dind is a fresh daemon per job: rebuild (cache-hot via build cache),
+    # revalidated already by build-validate
+    - ARCH=amd64 IMAGE="$CI_REGISTRY_IMAGE" ./ci/build.sh "$version"
+    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" "$CI_REGISTRY"
+    - PUSH_LATEST=1 ./ci/push.sh "$CI_REGISTRY_IMAGE" "$version"
+  cache:
+    key: vector-build-$CI_DEFAULT_BRANCH
+    paths: [build/artifacts/, build/cargo/]

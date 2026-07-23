@@ -1,0 +1,63 @@
+# Crates that implement or bundle cryptography outside the OpenSSL provider
+# model. Any component feature whose dependency closure introduces one of
+# these is excluded from the FIPS build (ci/features-fips.txt), and the final
+# feature set is hard-gated against this list at compile time
+# (ci/compile-in-container.sh). One crate name per line; '#' comments.
+#
+# TLS stacks with their own crypto (not FIPS-validatable here):
+ring
+aws-lc-rs
+aws-lc-sys
+aws-lc-fips-sys
+rustls
+rustls-pemfile
+rustls-webpki
+rustls-native-certs
+tokio-rustls
+hyper-rustls
+boring
+boring-sys
+# RustCrypto digest/MAC/cipher primitives (pure-Rust, not validated):
+md-5
+md5
+sha1
+sha-1
+sha2
+sha3
+hmac
+aes
+aes-gcm
+aes-siv
+cbc
+ctr
+cfb-mode
+ofb
+chacha20poly1305
+crypto_secretbox
+salsa20
+des
+blowfish
+twofish
+camellia
+rc2
+rc4
+blake2
+blake3
+ripemd
+whirlpool
+sm3
+sm4
+# Signature/key-exchange implementations outside OpenSSL:
+ed25519
+ed25519-dalek
+curve25519-dalek
+x25519-dalek
+p256
+p384
+p521
+k256
+rsa
+dsa
+ecdsa
+nkeys
+snow

@@ -1,0 +1,8 @@
+{
+  "@context": "https://openvex.dev/ns/v0.2.0",
+  "@id": "https://github.com/snk5125/vector-fips/vex/openvex.json",
+  "author": "snk5125",
+  "timestamp": "2026-07-23T00:00:00Z",
+  "version": 1,
+  "statements": []
+}

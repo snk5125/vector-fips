@@ -1,0 +1,49 @@
+# Patched UBI9 base for the vector-fips image.
+# Built on its own cadence (weekly cron + on demand) so CVE patching is
+# decoupled from app builds: upgrade to Red Hat's latest el9 backports, add
+# the packages the Vector image needs, scan (ci/scan.sh gates fixable
+# HIGH/CRITICAL), then publish as ubi9-patched:<date> (+ :latest).
+# The app Containerfile consumes a digest-pinned reference to this image.
+FROM registry.access.redhat.com/ubi9/ubi-minimal:9.5@sha256:a50731d3397a4ee28583f1699842183d4d24fadcc565c4688487af9ee4e13a44
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Package set is documented per-package (presence AND deliberate absence)
+# in docs/packages.md — keep the two in sync. Vector is a single static-ish
+# Rust binary: the runtime needs only the FIPS provider module (openssl-libs
+# is already in the base), the openssl CLI for build/validate gates, and
+# shadow-utils for the unprivileged user. curl-minimal is already in the
+# base (HEALTHCHECK relies on it).
+RUN microdnf upgrade -y \
+ && microdnf install -y --setopt=install_weak_deps=0 openssl shadow-utils \
+ && microdnf clean all \
+ && command -v curl
+
+# --- FIPS provider provenance (NIST CMVP traceability) ----------------------
+# Red Hat ships the validated OpenSSL FIPS module as its own frozen package
+# (openssl-fips-provider-so) precisely so openssl-libs can take CVE backports
+# without touching certified crypto. NIST CMVP certificate #4857 covers
+# module 3.0.7-395c1a240fbfffd8 (openssl-fips-provider-3.0.7-6.el9); Red Hat
+# rebuilt it as -11.el9_8 (module 3.0.7-cda111b5812c30d4) to fix
+# CVE-2026-31790 in the provider itself, and UBI repos carry only the
+# patched build — the certificate applies by lineage per Red Hat's
+# compliance matrix (https://access.redhat.com/compliance/fips) while
+# revalidation is in process.
+# A provider bump FAILS this gate on purpose: review certificate status,
+# then update these ARGs in the same commit (docs/fips-notes.md, "Provider
+# certificate lineage").
+ARG FIPS_PROVIDER_MODULE_VERSION=3.0.7-cda111b5812c30d4
+ARG FIPS_PROVIDER_PKG=openssl-fips-provider-so-3.0.7-11.el9_8
+ARG FIPS_CMVP_CERT=4857
+RUN pkg="$(rpm -qf /usr/lib64/ossl-modules/fips.so --qf '%{NAME}-%{VERSION}-%{RELEASE}')" \
+ && mod="$(LC_ALL=C grep -aoE '3\.[0-9]+\.[0-9]+-[0-9a-f]{16}' /usr/lib64/ossl-modules/fips.so | head -1)" \
+ && echo "fips provider package: $pkg  module: $mod" \
+ && [ "$pkg" = "$FIPS_PROVIDER_PKG" ] \
+ && [ "$mod" = "$FIPS_PROVIDER_MODULE_VERSION" ]
+
+LABEL io.grimoire.fips.cmvp.certificate="${FIPS_CMVP_CERT}" \
+      io.grimoire.fips.cmvp.url="https://csrc.nist.gov/projects/cryptographic-module-validation-program/certificate/${FIPS_CMVP_CERT}" \
+      io.grimoire.fips.provider.module-version="${FIPS_PROVIDER_MODULE_VERSION}" \
+      io.grimoire.fips.provider.package="${FIPS_PROVIDER_PKG}" \
+      io.grimoire.fips.provider.certified-module-version="3.0.7-395c1a240fbfffd8" \
+      io.grimoire.fips.provider.note="patched rebuild of the certified module (CVE-2026-31790); certificate lineage per Red Hat compliance matrix"

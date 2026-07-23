@@ -1,0 +1,84 @@
+# Patched-base refresh pipeline: build UBI9 base with latest el9 CVE
+# backports -> scan (gate) -> publish -> bump the digest pin in Containerfile
+# -> rebuild/validate/scan/push the app against it -> commit the bump.
+#
+# The app rebuild happens HERE (not via validate.yml) because pushes made
+# with GITHUB_TOKEN do not trigger other workflows.
+# No untrusted event inputs are interpolated into run: blocks (schedule /
+# manual dispatch only).
+name: base
+
+on:
+  schedule:
+    - cron: "17 6 * * 1"   # Mondays 06:17 UTC — Red Hat backports land continuously
+  workflow_dispatch:
+
+env:
+  BASE: ghcr.io/${{ github.repository }}/ubi9-patched
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  refresh-base:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # digest-bump commit
+      packages: write
+      security-events: write # SARIF upload
+    steps:
+      - uses: actions/checkout@v4
+      - name: free runner disk (vector compile needs it)
+        run: sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+      - uses: actions/cache@v4
+        with:
+          path: build/artifacts/
+          key: vector-bin-${{ hashFiles('ci/pins.sh', 'ci/features-fips.txt', 'ci/forbidden-crates.txt', 'ci/compile-in-container.sh', 'Containerfile.builder') }}-amd64
+      - uses: actions/cache@v4
+        with:
+          path: build/cargo/
+          key: cargo-home-${{ hashFiles('ci/pins.sh') }}
+      - name: build patched base
+        run: |
+          datetag=$(date -u +%Y-%m-%d)
+          echo "DATETAG=$datetag" >> "$GITHUB_ENV"
+          ARCH=amd64 BASE_IMAGE_REPO="$BASE" ./ci/build-base.sh "$datetag"
+      - name: scan base (gate on fixable HIGH/CRITICAL)
+        run: ./ci/scan.sh "$BASE:$DATETAG"
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: build/scan/trivy.sarif
+          category: base-image
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: push base
+        run: |
+          docker push "$BASE:$DATETAG"
+          docker push "$BASE:latest"
+          digest=$(docker inspect --format '{{index .RepoDigests 0}}' "$BASE:$DATETAG" | cut -d@ -f2)
+          echo "DIGEST=$digest" >> "$GITHUB_ENV"
+          echo "published $BASE:$DATETAG@$digest"
+      - name: bump pin, rebuild + validate + push app, commit
+        run: |
+          if ! grep -q '^ARG BASE_IMAGE=' Containerfile; then
+            echo "no BASE_IMAGE pin in Containerfile (bootstrap) — base published, skipping app rebuild"
+            exit 0
+          fi
+          sed -i "s|^ARG BASE_IMAGE=.*|ARG BASE_IMAGE=$BASE:$DATETAG@$DIGEST|" Containerfile
+          if git diff --quiet Containerfile; then
+            echo "base digest unchanged — nothing to do"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Containerfile
+          git commit -m "Bump patched base to $DATETAG"
+          # full app pipeline against the new base BEFORE anything is published
+          version="sha-$(git rev-parse --short HEAD)"
+          ARCH=amd64 IMAGE="$IMAGE" ./ci/build.sh "$version"
+          ./ci/validate.sh "$IMAGE:$version"
+          ./ci/scan.sh "$IMAGE:$version"
+          PUSH_LATEST=1 ./ci/push.sh "$IMAGE" "$version"
+          git push

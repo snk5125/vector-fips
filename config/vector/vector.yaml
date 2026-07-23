@@ -1,0 +1,37 @@
+# Baked aggregator defaults: dependency-free boot with the common ingest
+# listeners routed to a blackhole. Overlay a real topology by mounting your
+# config over /etc/vector/ (or pass `-c <file>` args; the entrypoint forwards
+# them to `vector`).
+api:
+  enabled: true
+  address: 127.0.0.1:8686   # HEALTHCHECK: curl /health
+
+sources:
+  vector_in:                # vector-to-vector (agents -> this aggregator)
+    type: vector
+    address: 0.0.0.0:6000
+
+  http_in:                  # NDJSON over HTTP
+    type: http_server
+    address: 0.0.0.0:8080
+    framing:
+      method: newline_delimited
+    decoding:
+      codec: json
+
+  fluent_in:                # fluentd / fluent-bit forward protocol
+    type: fluent
+    address: 0.0.0.0:24224
+
+  internal_metrics_in:
+    type: internal_metrics
+
+sinks:
+  devnull:
+    type: blackhole
+    inputs: [vector_in, http_in, fluent_in]
+
+  prometheus_out:           # scrape :9598/metrics for aggregator telemetry
+    type: prometheus_exporter
+    inputs: [internal_metrics_in]
+    address: 0.0.0.0:9598

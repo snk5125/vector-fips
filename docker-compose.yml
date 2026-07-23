@@ -1,0 +1,41 @@
+# Local bring-up for the FIPS Vector aggregator image.
+#
+#   make run                          -> dev profile: FIPS off
+#   docker compose --profile fips up -d   -> FIPS-mode aggregator (default)
+#
+# Ports: 6000 vector-to-vector, 8080 http NDJSON in, 24224 fluent forward,
+# 9598 prometheus_exporter (internal telemetry)
+services:
+  aggregator-dev:
+    profiles: [dev]
+
+    image: ${IMAGE:-ghcr.io/snk5125/vector-fips}:${VERSION:-latest}
+    environment:
+      VECTOR_FIPS: "0"
+    ports:
+      - "6000:6000"    # vector-to-vector
+      - "8080:8080"    # http_server NDJSON in
+      - "24224:24224"  # fluent forward in
+      - "9598:9598"    # prometheus_exporter
+    # Overlay a real topology over the baked blackhole defaults:
+    # volumes:
+    #   - ./my-vector.yaml:/etc/vector/vector.yaml:ro
+    healthcheck: &vector_health
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8686/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  aggregator-fips:
+    profiles: [fips]
+
+    image: ${IMAGE:-ghcr.io/snk5125/vector-fips}:${VERSION:-latest}
+    # VECTOR_FIPS=1 is the image default: OPENSSL_CONF/OPENSSL_MODULES point
+    # the embedded libcrypto at the container's validated FIPS provider.
+    ports:
+      - "6000:6000"
+      - "8080:8080"
+      - "24224:24224"
+      - "9598:9598"
+    healthcheck: *vector_health

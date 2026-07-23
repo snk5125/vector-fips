@@ -1,0 +1,32 @@
+# OpenSSL configuration consumed by Vector's *statically linked* libcrypto
+# (vendored OpenSSL 3.0.x) via OPENSSL_CONF. Providers are loaded from the
+# CONTAINER's module directory (OPENSSL_MODULES=/usr/lib64/ossl-modules), so
+# all cryptography is performed by Red Hat's CMVP-validated FIPS provider —
+# not by anything compiled into the binary.
+#
+# - `fips` + `base` providers only: base carries encoders/decoders (no
+#   crypto); every algorithm implementation comes from fips.so.
+# - default_properties = fips=yes: algorithm fetches require FIPS-approved
+#   implementations; nothing can silently fall back.
+# - config_diagnostics: a broken/missing provider makes libcrypto init fail
+#   loudly instead of continuing without FIPS (fail-closed).
+# - [fips_sect] comes from Red Hat's /etc/pki/tls/fips_local.cnf (activate +
+#   tls1-prf-ems-check), included last so it cannot capture our directives.
+config_diagnostics = 1
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+alg_section = algorithm_sect
+
+[provider_sect]
+fips = fips_sect
+base = base_sect
+
+[base_sect]
+activate = 1
+
+[algorithm_sect]
+default_properties = fips=yes
+
+.include /etc/pki/tls/fips_local.cnf
