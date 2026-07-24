@@ -1,0 +1,135 @@
+sources-amqp	CLEAN	-
+sources-apache_metrics	CLEAN	-
+sources-aws_ecs_metrics	CLEAN	-
+sources-aws_kinesis_firehose	CLEAN	-
+sources-aws_s3	FORBIDDEN	hmac v0.12.1,md-5 v0.10.6,ring v0.17.14,sha1 v0.10.6,sha2 v0.10.9
+sources-aws_sqs	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sources-datadog_agent	CLEAN	-
+sources-demo_logs	CLEAN	-
+sources-dnstap	FORBIDDEN	ring v0.17.14
+sources-docker_logs	FORBIDDEN	hyper-rustls v0.27.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+sources-eventstoredb_metrics	CLEAN	-
+sources-exec	CLEAN	-
+sources-file	CLEAN	-
+sources-file_descriptor	CLEAN	-
+sources-fluent	CLEAN	-
+sources-gcp_pubsub	CLEAN	-
+sources-heroku_logs	CLEAN	-
+sources-host_metrics	CLEAN	-
+sources-http_client	CLEAN	-
+sources-http_server	CLEAN	-
+sources-internal_logs	CLEAN	-
+sources-internal_metrics	CLEAN	-
+sources-static_metrics	CLEAN	-
+sources-journald	CLEAN	-
+sources-kafka	CLEAN	-
+sources-kubernetes_logs	CLEAN	-
+sources-logstash	CLEAN	-
+sources-mongodb_metrics	FORBIDDEN	hmac v0.12.1,md-5 v0.10.6,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,sha1 v0.10.6,sha2 v0.10.9,tokio-rustls v0.26.2
+sources-mqtt	FORBIDDEN	ring v0.17.14,rustls v0.22.4,rustls-webpki v0.102.8,tokio-rustls v0.25.0
+sources-nats	FORBIDDEN	curve25519-dalek v4.1.3,ed25519 v2.2.3,ed25519-dalek v2.2.0,nkeys v0.4.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,sha2 v0.10.9,tokio-rustls v0.26.2
+sources-nginx_metrics	CLEAN	-
+sources-okta	CLEAN	-
+sources-opentelemetry	CLEAN	-
+sources-postgresql_metrics	FORBIDDEN	hmac v0.13.0,md-5 v0.11.0,sha2 v0.11.0
+sources-prometheus	CLEAN	-
+sources-prometheus-scrape	CLEAN	-
+sources-prometheus-remote-write	CLEAN	-
+sources-prometheus-pushgateway	CLEAN	-
+sources-pulsar	FORBIDDEN	curve25519-dalek v4.1.3,ecdsa v0.16.9,ed25519 v2.2.3,ed25519-dalek v2.2.0,hmac v0.12.1,hyper-rustls v0.27.5,p256 v0.13.2,p384 v0.13.0,ring v0.17.14,rsa v0.9.10,rustls v0.23.37,rustls-webpki v0.103.13,sha2 v0.10.9,tokio-rustls v0.26.2
+sources-redis	CLEAN	-
+sources-socket	CLEAN	-
+sources-splunk_hec	CLEAN	-
+sources-statsd	CLEAN	-
+sources-stdin	CLEAN	-
+sources-syslog	CLEAN	-
+sources-websocket	FORBIDDEN	sha1 v0.10.6
+sources-vector	CLEAN	-
+transforms-aggregate	CLEAN	-
+transforms-aws_ec2_metadata	CLEAN	-
+transforms-dedupe	CLEAN	-
+transforms-delay	CLEAN	-
+transforms-filter	CLEAN	-
+transforms-incremental_to_absolute	CLEAN	-
+transforms-window	CLEAN	-
+transforms-log_to_metric	CLEAN	-
+transforms-lua	CLEAN	-
+transforms-metric_to_log	CLEAN	-
+transforms-reduce	CLEAN	-
+transforms-remap	CLEAN	-
+transforms-route	CLEAN	-
+transforms-exclusive-route	CLEAN	-
+transforms-sample	CLEAN	-
+transforms-tag_cardinality_limit	CLEAN	-
+transforms-throttle	CLEAN	-
+transforms-trace_to_log	CLEAN	-
+transforms-impl-sample	CLEAN	-
+transforms-impl-dedupe	CLEAN	-
+transforms-impl-reduce	CLEAN	-
+sinks-amqp	CLEAN	-
+sinks-appsignal	CLEAN	-
+sinks-aws_cloudwatch_logs	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-aws_cloudwatch_metrics	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-aws_kinesis_firehose	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-aws_kinesis_streams	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-aws_s3	FORBIDDEN	hmac v0.12.1,md-5 v0.10.6,ring v0.17.14,sha1 v0.10.6,sha2 v0.10.9
+sinks-aws_sqs	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-aws_sns	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+sinks-axiom	CLEAN	-
+sinks-azure_blob	FORBIDDEN	hyper-rustls v0.27.5,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+sinks-azure_logs_ingestion	CLEAN	-
+sinks-azure_monitor_logs	CLEAN	-
+sinks-blackhole	CLEAN	-
+sinks-chronicle	CLEAN	-
+sinks-clickhouse	CLEAN	-
+sinks-console	CLEAN	-
+sinks-databend	FORBIDDEN	hyper-rustls v0.27.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+sinks-databricks-zerobus	FORBIDDEN	hyper-rustls v0.27.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,sha1 v0.10.6,sha2 v0.10.9,tokio-rustls v0.26.2
+sinks-datadog_events	CLEAN	-
+sinks-datadog_logs	CLEAN	-
+sinks-datadog_metrics	CLEAN	-
+sinks-datadog_traces	CLEAN	-
+sinks-doris	FORBIDDEN	hmac v0.12.1,md-5 v0.10.6,ring v0.17.14,rsa v0.9.10,rustls v0.23.37,rustls-webpki v0.103.13,sha1 v0.10.6,sha2 v0.10.9
+sinks-elasticsearch	CLEAN	-
+sinks-file	CLEAN	-
+sinks-gcp	CLEAN	-
+sinks-gcp-chronicle	CLEAN	-
+sinks-greptimedb_metrics	FORBIDDEN	ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+sinks-greptimedb_logs	FORBIDDEN	ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+sinks-honeycomb	CLEAN	-
+sinks-http	CLEAN	-
+sinks-humio	CLEAN	-
+sinks-influxdb	CLEAN	-
+sinks-kafka	CLEAN	-
+sinks-keep	CLEAN	-
+sinks-mezmo	CLEAN	-
+sinks-loki	CLEAN	-
+sinks-mqtt	FORBIDDEN	ring v0.17.14,rustls v0.22.4,rustls-webpki v0.102.8,tokio-rustls v0.25.0
+sinks-nats	FORBIDDEN	curve25519-dalek v4.1.3,ed25519 v2.2.3,ed25519-dalek v2.2.0,nkeys v0.4.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,sha2 v0.10.9,tokio-rustls v0.26.2
+sinks-new_relic_logs	CLEAN	-
+sinks-new_relic	CLEAN	-
+sinks-opentelemetry	CLEAN	-
+sinks-papertrail	CLEAN	-
+sinks-prometheus	CLEAN	-
+sinks-postgres	FORBIDDEN	hmac v0.12.1,md-5 v0.10.6,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,sha2 v0.10.9
+sinks-pulsar	FORBIDDEN	curve25519-dalek v4.1.3,ecdsa v0.16.9,ed25519 v2.2.3,ed25519-dalek v2.2.0,hmac v0.12.1,hyper-rustls v0.27.5,p256 v0.13.2,p384 v0.13.0,ring v0.17.14,rsa v0.9.10,rustls v0.23.37,rustls-webpki v0.103.13,sha2 v0.10.9,tokio-rustls v0.26.2
+sinks-redis	CLEAN	-
+sinks-sematext	CLEAN	-
+sinks-socket	CLEAN	-
+sinks-splunk_hec	CLEAN	-
+sinks-statsd	CLEAN	-
+sinks-vector	CLEAN	-
+sinks-websocket	FORBIDDEN	sha1 v0.10.6
+sinks-websocket-server	FORBIDDEN	sha1 v0.10.6
+sinks-webhdfs	FORBIDDEN	md-5 v0.10.6
+api	CLEAN	-
+api-client	CLEAN	-
+enrichment-tables	CLEAN	-
+codecs-syslog	CLEAN	-
+codecs-opentelemetry	CLEAN	-
+codecs-parquet	CLEAN	-
+secrets	FORBIDDEN	hmac v0.12.1,ring v0.17.14,sha2 v0.10.9
+vrl-functions-env	CLEAN	-
+vrl-functions-system	CLEAN	-
+vrl-functions-network	FORBIDDEN	hyper-rustls v0.27.5,ring v0.17.14,rustls v0.23.37,rustls-webpki v0.103.13,tokio-rustls v0.26.2
+vrl-functions-crypto	FORBIDDEN	aes v0.8.3,aes v0.9.1,aes-siv v0.7.0,cbc v0.2.1,cfb-mode v0.9.1,chacha20poly1305 v0.11.0,crypto_secretbox v0.1.1,ctr v0.10.1,ctr v0.9.2,hmac v0.13.0,md-5 v0.11.0,ofb v0.7.1,salsa20 v0.10.2,sha1 v0.11.0,sha2 v0.11.0,sha3 v0.12.0

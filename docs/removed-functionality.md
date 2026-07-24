@@ -14,6 +14,8 @@ crates — the graph ships in the image at
 sample of removals against the shipped binary every build.
 
 Trust chain: audit classification → compile-time gate → runtime assert.
+The audit output for the current pin is committed as
+[audit-snapshot.tsv](audit-snapshot.tsv) (135 features, 33 FORBIDDEN).
 The audit is dependency-level; it is complemented by a code-level sweep for
 tonic TLS type usage (`ClientTlsConfig`/`Identity`/`Certificate`), which is
 how `gcp_pubsub` was caught despite a clean dependency closure.

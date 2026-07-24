@@ -63,8 +63,9 @@ tree "" | awk "{print \$1\" \"\$2}" | sort -u > /work/audit/baseline.txt
 [ -s /work/audit/baseline.txt ] || { echo "baseline empty" >&2; cat /work/audit/err.txt >&2; exit 1; }
 grep -E "$FORBID" /work/audit/baseline.txt > /work/audit/baseline-hits.txt || true
 
-feats="$(grep -E "^(sources|sinks|transforms)-[a-z0-9_]+ = \[" Cargo.toml | cut -d= -f1 | tr -d " " \
+feats="$(grep -E "^(sources|sinks|transforms)-[a-z0-9_-]+ = \[" Cargo.toml | cut -d= -f1 | tr -d " " \
         | grep -vE "^(sources|sinks|transforms)-(logs|metrics)$" \
+        | grep -v -- "-utils-" \
         | grep -v windows_event_log)
 api
 api-client
