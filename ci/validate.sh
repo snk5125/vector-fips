@@ -52,10 +52,12 @@ echo "== prep: self-signed RSA-2048/SHA-256 cert + TLS overlay config"
 # Generated with the IMAGE's openssl under the image's FIPS config — portable
 # (host openssl may be LibreSSL without -addext) and an extra provider
 # exercise. SAN required: modern verification ignores CN.
-docker run --rm --entrypoint /usr/bin/openssl -u 0 -v "$tmp:/v" "$image" \
-  req -x509 -newkey rsa:2048 -sha256 -nodes -days 2 \
-  -keyout /v/key.pem -out /v/crt.pem -subj "/CN=localhost" \
-  -addext "subjectAltName=DNS:localhost" >/dev/null 2>&1
+# chmod happens inside the container: the files are root-owned there, and
+# the host user (CI runner) cannot chmod them afterwards.
+docker run --rm --entrypoint /bin/bash -u 0 -v "$tmp:/v" "$image" -c \
+  'openssl req -x509 -newkey rsa:2048 -sha256 -nodes -days 2 \
+     -keyout /v/key.pem -out /v/crt.pem -subj "/CN=localhost" \
+     -addext "subjectAltName=DNS:localhost" && chmod 644 /v/key.pem /v/crt.pem' >/dev/null 2>&1
 [ -s "$tmp/crt.pem" ] || { echo "FAIL: cert generation in image failed" >&2; exit 1; }
 cat > "$tmp/tls.yaml" <<'EOF'
 api:
@@ -78,7 +80,7 @@ sinks:
     path: /var/lib/vector/validate-out.ndjson
     encoding: {codec: json}
 EOF
-chmod 644 "$tmp"/*.pem "$tmp/tls.yaml"
+chmod 644 "$tmp/tls.yaml"   # pem perms handled in-container (root-owned)
 
 echo "== 1. FIPS positive: TLS ingest through the container's validated provider"
 docker rm -f "$c1" >/dev/null 2>&1 || true
