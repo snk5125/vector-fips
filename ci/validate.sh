@@ -33,6 +33,10 @@ c1="vecfips-val-tls-$$"
 c2="vecfips-val-neg-$$"
 c3="vecfips-val-fn-$$"
 tmp="$(mktemp -d)"
+# mktemp dirs are 700 and owned by the invoking user; the container's uid
+# 1000 must be able to traverse the bind mount (real perms apply on Linux
+# hosts — Docker Desktop on macOS masks this).
+chmod 755 "$tmp"
 cleanup() { docker rm -f "$c1" "$c2" "$c3" >/dev/null 2>&1 || true; rm -rf "$tmp"; }
 trap cleanup EXIT
 

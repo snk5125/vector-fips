@@ -30,8 +30,9 @@ jobs:
       - name: diagnostics
         run: |
           img="$IMAGE:diag"
-          echo "===== 1. default boot, full logs + exit code"
-          docker run --name diagboot "$img" || true
+          echo "===== 1. default boot (10s), full logs + exit code"
+          docker run -d --name diagboot "$img"
+          sleep 10
           docker logs diagboot 2>&1 | head -40
           echo "exit=$(docker inspect -f '{{.State.ExitCode}}' diagboot) oom=$(docker inspect -f '{{.State.OOMKilled}}' diagboot)"
           docker rm -f diagboot >/dev/null
