@@ -7,13 +7,14 @@ and where the compliance boundary actually sits.
 ## The mechanism
 
 Vector's GA builds (and this build) link OpenSSL statically via the
-`openssl/vendored` cargo feature → `openssl-src` pinned to the **3.0.x**
-branch — the same branch as Red Hat's validated 3.0.7 provider module.
-Static *libcrypto* does not mean static *providers*: since OpenSSL 3,
-providers are loaded at runtime with `dlopen`, and the embedded libcrypto
-honors `OPENSSL_CONF` and `OPENSSL_MODULES`. The binary is deliberately a
-*dynamic glibc executable* (build-gated) so `dlopen` works; a musl-static
-build could never load the provider.
+`openssl/vendored` cargo feature → `openssl-src` `300.6.0+3.6.2`, i.e.
+**OpenSSL 3.6.2** embedded in the binary (recorded in the shipped
+`build-manifest.json`). Static *libcrypto* does not mean static
+*providers*: since OpenSSL 3, providers are loaded at runtime with
+`dlopen`, and the embedded libcrypto honors `OPENSSL_CONF` and
+`OPENSSL_MODULES`. The binary is deliberately a *dynamic glibc executable*
+(build-gated) so `dlopen` works; a musl-static build could never load the
+provider.
 
 The image wires it fail-closed
 ([config/openssl-fips.cnf](../config/openssl-fips.cnf)):
@@ -86,12 +87,13 @@ updated in the same commit.
 - **Host kernel**: Red Hat's formal FIPS 140-3 posture requires the host to
   run `fips=1`. This image activates the validated provider regardless of
   host state; for a real compliance boundary run it on a FIPS-mode host.
-- **Provider/libcrypto pairing**: the validated module is loaded by the
-  *vendored upstream* libcrypto 3.0.x, not Red Hat's patched libcrypto it
-  normally pairs with. The provider API is the stability boundary OpenSSL
-  defines, and the functional + negative validation exercises the pairing
-  every build — but an assessor may still care about the distinction;
-  it is documented here deliberately.
+- **Provider/libcrypto pairing**: the validated 3.0.7 module is loaded by
+  the *vendored upstream* libcrypto **3.6.2**, not Red Hat's patched
+  3.x libcrypto it normally pairs with. The provider API is the stability
+  boundary OpenSSL defines for exactly this composition, and the
+  functional + negative validation exercises the pairing every build — but
+  an assessor may still care about the distinction; it is documented here
+  deliberately.
 - **EMS**: `tls1-prf-ems-check` is inherited from Red Hat's
   `fips_local.cnf` — TLS 1.2 key derivation requires extended master
   secret, per FIPS 140-3 IG.

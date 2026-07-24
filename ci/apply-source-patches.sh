@@ -24,18 +24,22 @@ VRL_COMMIT="${VRL_COMMIT:?apply-source-patches: VRL_COMMIT env required}"
 VRL_REPO="${VRL_REPO:-https://github.com/vectordotdev/vrl.git}"
 
 apply_line_patch() { # apply_line_patch <file> <old> <new>
-  local file="$1" old="$2" new="$3"
-  if grep -qF "$new" "$file"; then
-    echo "   already applied: $file"
-    return 0
-  fi
-  grep -qF "$old" "$file" || { echo "PATCH TARGET MISSING in $file: $old" >&2; exit 1; }
-  python3 - "$file" "$old" "$new" <<'EOF'
+  # Full-substring semantics (python, not grep — grep is line-based and
+  # mishandles multiline patterns): exactly-one occurrence of <old> is
+  # replaced; if <old> is absent but <new> is present, the patch is already
+  # applied; anything else is upstream drift and fails for review.
+  python3 - "$1" "$2" "$3" <<'EOF'
 import sys
 path, old, new = sys.argv[1], sys.argv[2], sys.argv[3]
 s = open(path).read()
-assert s.count(old) == 1, f"expected exactly one occurrence in {path}"
-open(path, 'w').write(s.replace(old, new))
+if old in s:
+    assert s.count(old) == 1, f"expected exactly one occurrence in {path}"
+    open(path, 'w').write(s.replace(old, new))
+    print(f"   patched: {path}")
+elif new and new in s:
+    print(f"   already applied: {path}")
+else:
+    sys.exit(f"PATCH TARGET MISSING in {path}: {old!r}")
 EOF
 }
 
@@ -51,6 +55,24 @@ apply_line_patch Cargo.toml \
 apply_line_patch Cargo.toml \
   'sinks-azure_blob = ["dep:azure_core", "dep:azure_identity", "dep:azure_storage_blob"]' \
   'sinks-azure_blob = ["dep:azure_core", "dep:azure_identity", "dep:azure_storage_blob", "dep:reqwest_13"]'
+
+echo "== patch 5: vector-core connect-info without tonic::transport::Certificate"
+# tonic's Certificate type is gated behind its rustls-based `tls` feature
+# (removed by patch 1). Vector only uses it as a PEM-bytes wrapper for gRPC
+# connect-info metadata populated from the OpenSSL peer chain, and nothing
+# in the workspace consumes `peer_certs` — store the PEM bytes directly.
+apply_line_patch lib/vector-core/src/tls/incoming.rs \
+  'use tonic::transport::{Certificate, server::Connected};' \
+  'use tonic::transport::server::Connected;'
+apply_line_patch lib/vector-core/src/tls/incoming.rs \
+  '    pub peer_certs: Option<Vec<Certificate>>,' \
+  '    pub peer_certs: Option<Vec<Vec<u8>>>, // PEM-encoded (was tonic Certificate; see ci/apply-source-patches.sh)'
+apply_line_patch lib/vector-core/src/tls/incoming.rs \
+  '                        .filter_map(|c| c.to_pem().ok())
+                        .map(Certificate::from_pem)
+                        .collect()' \
+  '                        .filter_map(|c| c.to_pem().ok())
+                        .collect()'
 
 echo "== patch 3: vendor vrl @ ${VRL_COMMIT:0:9} without community_id (SHA-1)"
 # Outside the vector checkout: a package physically inside the workspace dir

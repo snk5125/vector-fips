@@ -30,7 +30,6 @@ sources-exec
 sources-file
 sources-file_descriptor
 sources-fluent
-sources-gcp_pubsub
 sources-heroku_logs
 sources-host_metrics
 sources-http_client
@@ -75,8 +74,10 @@ transforms-trace_to_log
 #
 # --- sinks -------------------------------------------------------------------
 sinks-amqp
+sinks-appsignal
 sinks-axiom
 sinks-blackhole
+sinks-chronicle
 sinks-clickhouse
 sinks-console
 sinks-datadog_events

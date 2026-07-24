@@ -21,6 +21,12 @@ export RUSTUP_TOOLCHAIN=${RUST_VERSION:-1.95.0}
 export CARGO_PROFILE_RELEASE_LTO=thin
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=16
 
+# bindgen (zstd-sys): el9's clang-libs lives in /usr/lib64 but the builtin
+# headers (clang-resource-filesystem) are under /usr/lib/clang — libclang
+# doesn't derive that resource dir on its own.
+clang_inc="$(echo /usr/lib/clang/*/include)"
+[ -f "$clang_inc/stddef.h" ] && export BINDGEN_EXTRA_CLANG_ARGS="-I$clang_inc"
+
 cd /work/src
 
 features="$(grep -vE '^\s*(#|$)' /work/ci/features-fips.txt | tr '\n' ',' | sed 's/,$//')"
@@ -78,7 +84,9 @@ ldd "$bin" | grep -q 'libc.so' || { echo "compile: not a dynamic executable — 
 # --- artifacts + manifest ---------------------------------------------------
 cp "$bin" /work/artifacts/vector
 openssl_src_ver="$(awk '/^name = "openssl-src"/{f=1} f && /^version/{print $3; exit}' Cargo.lock | tr -d '"')"
-vrl_pin="$(awk '/^name = "vrl"/{f=1} f && /^source/{print; exit}' Cargo.lock | sed 's/.*#//; s/"//')"
+# vrl is a path dep after the [patch] substitution (no source line in the
+# lock) — the pin is the env the patch script asserted against the lock.
+vrl_pin="${VRL_COMMIT:-unknown}"
 python3 - "$features" "$openssl_src_ver" "$vrl_pin" > /work/artifacts/build-manifest.json <<'EOF'
 import json, subprocess, sys, os
 features, openssl_src, vrl_pin = sys.argv[1], sys.argv[2], sys.argv[3]
@@ -97,6 +105,7 @@ print(json.dumps({
         "reqwest_13: made optional, gated behind excluded sinks-azure_blob (was unconditionally dragging the rustls 0.23 stack)",
         "vrl@" + os.environ.get('VRL_COMMIT', 'unknown')[:9] + ": community_id() stdlib function removed (RustCrypto SHA-1)",
         "headers@0.3.9: SecWebsocketAccept type + sha1 dependency removed (websocket handshake SHA-1; no websocket component in the feature set)",
+        "vector-core: gRPC connect-info stores peer-cert PEM bytes directly instead of tonic::transport::Certificate (type is gated behind tonic's removed rustls tls feature; peer_certs has no consumers)",
     ],
     "profile_overrides": {"lto": "thin (upstream: fat; RAM-bound builders; perf-only deviation)",
                           "codegen-units": 16},

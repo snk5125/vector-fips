@@ -12,9 +12,12 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # cmake: librdkafka (rdkafka-sys). perl + modules: openssl-src's Configure
 # (the vendored, statically linked OpenSSL 3.0.x build). git: cargo git
 # dependency (vrl) + source clone. unzip: protoc release zip.
+# clang-libs + clang-resource-filesystem: libclang and its builtin headers
+# (stddef.h & co) for bindgen (zstd-sys) — deliberately NOT the full clang
+# frontend, which drags in gcc-toolset.
 RUN dnf install -y --setopt=install_weak_deps=0 \
       gcc gcc-c++ make cmake perl perl-FindBin perl-IPC-Cmd perl-File-Compare perl-File-Copy \
-      git-core unzip \
+      git-core unzip clang-libs clang-resource-filesystem \
  && dnf clean all
 
 # --- pinned rustup + toolchain (matches upstream rust-toolchain.toml) -------

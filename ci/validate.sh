@@ -211,7 +211,14 @@ if ! wait_running_api "$c3" "$BOOT_WAIT"; then
   fail "health probe (non-FIPS dev) — last 30 log lines:"
   docker logs "$c3" 2>&1 | tail -30 >&2
 else
-  docker logs "$c3" 2>&1 | grep -q 'FIPS mode disabled' || fail "entrypoint did not report FIPS disabled"
+  dev_ok=1
+  # capture-then-grep: `docker logs | grep -q` + pipefail = SIGPIPE race
+  dev_logs="$(docker logs "$c3" 2>&1)"
+  if ! grep -q 'FIPS mode disabled' <<<"$dev_logs"; then
+    fail "entrypoint did not report FIPS disabled — first 5 log lines:"
+    head -5 <<<"$dev_logs" >&2
+    dev_ok=0
+  fi
   ingest_ok=0
   for _ in $(seq 1 15); do
     if docker exec "$c3" curl -fsS -XPOST http://localhost:8080 -d '{"smoke":"plain"}' >/dev/null 2>&1; then
@@ -219,10 +226,22 @@ else
     fi
     sleep 2
   done
-  [ "$ingest_ok" = "1" ] || fail "plain NDJSON ingest smoke on :8080"
-  docker exec "$c3" curl -fsS http://localhost:9598/metrics 2>/dev/null | grep -q vector_ \
-    || fail "prometheus_exporter :9598 not serving internal metrics"
-  echo "   OK: dev instance healthy, ingest + metrics up"
+  [ "$ingest_ok" = "1" ] || { fail "plain NDJSON ingest smoke on :8080"; dev_ok=0; }
+  metrics_ok=0
+  for _ in $(seq 1 15); do  # exporter serves after the first internal_metrics scrape flush
+    metrics_body="$(docker exec "$c3" curl -fsS http://localhost:9598/metrics 2>/dev/null || true)"
+    if grep -q vector_ <<<"$metrics_body"; then
+      metrics_ok=1; break
+    fi
+    sleep 2
+  done
+  if [ "$metrics_ok" != "1" ]; then
+    fail "prometheus_exporter :9598 not serving internal metrics — exporter-related logs:"
+    docker logs "$c3" 2>&1 | grep -iE 'prometheus|exporter|9598|error|warn' | tail -10 >&2
+    docker exec "$c3" curl -sS -v http://localhost:9598/metrics 2>&1 | tail -8 >&2
+    dev_ok=0
+  fi
+  [ "$dev_ok" = "1" ] && echo "   OK: dev instance healthy, ingest + metrics up"
 fi
 docker rm -f "$c3" >/dev/null 2>&1 || true
 

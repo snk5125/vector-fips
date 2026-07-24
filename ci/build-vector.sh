@@ -41,9 +41,9 @@ if [ "$got" != "$VECTOR_COMMIT" ]; then
   echo "  got:  $got" >&2
   exit 1
 fi
-# discard any leftover patch state from a previous run; the compile script
-# re-applies it (idempotent, exact-match)
-git -C "$src" checkout -q -- Cargo.toml Cargo.lock 2>/dev/null || true
+# discard all leftover patch state from a previous run; the compile script
+# re-applies every patch (idempotent, exact-match)
+git -C "$src" checkout -q -- . 2>/dev/null || true
 
 echo "== compile (features: ci/features-fips.txt)"
 docker run --rm \

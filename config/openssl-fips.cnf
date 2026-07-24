@@ -1,5 +1,5 @@
 # OpenSSL configuration consumed by Vector's *statically linked* libcrypto
-# (vendored OpenSSL 3.0.x) via OPENSSL_CONF. Providers are loaded from the
+# (vendored OpenSSL 3.6.2) via OPENSSL_CONF. Providers are loaded from the
 # CONTAINER's module directory (OPENSSL_MODULES=/usr/lib64/ossl-modules), so
 # all cryptography is performed by Red Hat's CMVP-validated FIPS provider —
 # not by anything compiled into the binary.

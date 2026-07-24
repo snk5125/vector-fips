@@ -85,7 +85,7 @@ for f in $feats; do
     printf "%s\tRESOLVE_ERROR\t%s\n" "$f" "$(head -1 /work/audit/err.txt | tr "\t" " ")" >> /work/audit/audit.tsv
     continue
   fi
-  hits=$(grep -E "$FORBID" /work/audit/cur.txt | comm -13 /work/audit/baseline-hits.txt - | tr "\n" "," | sed "s/,$//")
+  hits=$( { grep -E "$FORBID" /work/audit/cur.txt || true; } | comm -13 /work/audit/baseline-hits.txt - | tr "\n" "," | sed "s/,$//")
   if [ -n "$hits" ]; then
     printf "%s\tFORBIDDEN\t%s\n" "$f" "$hits" >> /work/audit/audit.tsv
   else

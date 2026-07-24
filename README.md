@@ -11,8 +11,8 @@ Vector publishes no FIPS build: its GA binaries statically link OpenSSL and
 bundle rustls/ring in several components, and the full VRL stdlib ships
 RustCrypto-based `md5()`/`sha*()`/`encrypt()`. This image rebuilds Vector so
 the only cryptography reachable at runtime is OpenSSL's — and points the
-statically linked OpenSSL 3.0.x at the **container's** validated FIPS
-provider (`/usr/lib64/ossl-modules/fips.so`) via `OPENSSL_CONF` +
+statically linked OpenSSL (3.6.2, vendored) at the **container's** validated
+FIPS provider (`/usr/lib64/ossl-modules/fips.so`) via `OPENSSL_CONF` +
 `OPENSSL_MODULES`, with `default_properties = fips=yes` so nothing can fall
 back to non-approved implementations.
 
@@ -35,9 +35,10 @@ forward in, `9598` prometheus_exporter, `8686` API (localhost healthcheck).
 - The base ships Red Hat's separately-packaged, CMVP-certificate-traced FIPS
   provider (`openssl-fips-provider-so`, pinned + gated in
   [Containerfile.base](Containerfile.base)).
-- The custom binary statically links vendored OpenSSL **3.0.x** (same branch
-  as the validated 3.0.7 provider) and is a dynamic glibc executable, so its
-  embedded libcrypto can `dlopen` the container's provider.
+- The custom binary statically links vendored OpenSSL **3.6.2** and is a
+  dynamic glibc executable, so its embedded libcrypto can `dlopen` the
+  container's validated 3.0.7 provider across OpenSSL's stable provider API
+  (the pairing is exercised — positively and negatively — every build).
 - `OPENSSL_CONF=/etc/vector/openssl-fips.cnf` activates **only** the `fips`
   + `base` providers, requires `fips=yes` algorithm properties, and sets
   `config_diagnostics` (fail-closed). `OPENSSL_MODULES=
@@ -59,11 +60,13 @@ compile gate, and `ci/validate.sh` asserts removed components/functions are
 really gone from the shipped binary. Headlines:
 
 - **Removed sources/sinks**: all `aws_*` (AWS SDK → rustls + RustCrypto
-  sigv4), `nats` (ring + ed25519), `mongodb_metrics` (rustls), `mqtt`
-  (rustls), `websocket`/`websocket-server` (RustCrypto SHA-1 handshake),
-  `databend` (rustls), `postgres` sink + `greptimedb`/`pulsar`/`webhdfs`/
-  `azure_*`/`chronicle`/`appsignal` (see the full table with dependency
-  evidence in docs/removed-functionality.md).
+  sigv4), `nats` (ring + ed25519), `mongodb_metrics` + `postgresql_metrics`
+  (rustls / RustCrypto SCRAM), `mqtt` (rustls), `websocket`/
+  `websocket-server` (RustCrypto SHA-1 handshake), `databend` (rustls),
+  `postgres` + `doris` sinks (sqlx rustls + MySQL auth crypto),
+  `greptimedb`/`pulsar`/`webhdfs`/`azure_*`, `gcp_pubsub` source
+  (tonic-rustls transport) — full table with dependency evidence in
+  docs/removed-functionality.md.
 - **Removed VRL functions**: `md5`, `sha1`, `sha2`, `sha3`, `hmac`,
   `encrypt`, `decrypt`, `encrypt_ip`, `decrypt_ip` (+ non-crypto riders in
   the same feature group: `crc`, `seahash`, `xxhash`), and the network group

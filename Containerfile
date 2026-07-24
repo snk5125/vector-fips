@@ -7,7 +7,7 @@
 # The vector binary is custom-compiled by ci/build-vector.sh (pinned source,
 # curated FIPS feature set, forbidden-crate gate — see
 # docs/removed-functionality.md) into build/artifacts/, consumed here like a
-# vendor artifact. Its vendored OpenSSL 3.0.x is statically linked; at
+# vendor artifact. Its vendored OpenSSL (3.6.2) is statically linked; at
 # runtime OPENSSL_CONF + OPENSSL_MODULES point it at the CONTAINER's
 # validated provider.
 # Bootstrap default: the locally built base (ci/build.sh always supplies it);

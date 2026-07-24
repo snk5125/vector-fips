@@ -35,3 +35,4 @@ sinks:
     type: prometheus_exporter
     inputs: [internal_metrics_in]
     address: 0.0.0.0:9598
+    default_namespace: vector
