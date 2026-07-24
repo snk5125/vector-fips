@@ -55,8 +55,14 @@ RUN arch="$(uname -m)" \
  && rm /tmp/protoc.zip \
  && protoc --version
 
+# Bind-mounted working dirs (src, vrl-patched) are owned by the invoking
+# host user while this container runs as root — allow git to operate on
+# them (CI runners hit "dubious ownership" otherwise).
 ENV PATH=/opt/cargo/bin:$PATH \
-    RUSTUP_TOOLCHAIN=1.95.0
+    RUSTUP_TOOLCHAIN=1.95.0 \
+    GIT_CONFIG_COUNT=1 \
+    GIT_CONFIG_KEY_0=safe.directory \
+    GIT_CONFIG_VALUE_0=*
 
 # cargo-auditable embeds the exact resolved dependency list into the binary
 # (rust-audit format) — trivy reads it, so the vulnerability scan covers the
