@@ -1,0 +1,49 @@
+# On-demand diagnostics for the FIPS wiring on amd64 runners (dispatch only).
+# Rebuilds the image (cache-hot) and dumps provider/libcrypto behavior as
+# root and as uid 1000 — used when validate.sh failures need runner-side
+# facts. No untrusted event inputs are interpolated anywhere.
+name: diagnose
+
+on:
+  workflow_dispatch:
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: free runner disk
+        run: sudo rm -rf /usr/local/lib/android /opt/hostedtoolcache/CodeQL /usr/share/dotnet
+      - uses: actions/cache@v4
+        with:
+          path: build/artifacts/
+          key: vector-bin-${{ hashFiles('ci/pins.sh', 'ci/features-fips.txt', 'ci/forbidden-crates.txt', 'ci/compile-in-container.sh', 'Containerfile.builder') }}-amd64
+      - uses: actions/cache@v4
+        with:
+          path: build/cargo/
+          key: cargo-home-${{ hashFiles('ci/pins.sh') }}
+      - name: build image
+        run: ARCH=amd64 IMAGE="$IMAGE" ./ci/build.sh diag
+      - name: diagnostics
+        run: |
+          img="$IMAGE:diag"
+          echo "===== 1. default boot, full logs + exit code"
+          docker run --name diagboot "$img" || true
+          docker logs diagboot 2>&1 | head -40
+          echo "exit=$(docker inspect -f '{{.State.ExitCode}}' diagboot) oom=$(docker inspect -f '{{.State.OOMKilled}}' diagboot)"
+          docker rm -f diagboot >/dev/null
+          echo "===== 2. openssl list -providers as uid 1000 (image env)"
+          docker run --rm --entrypoint /bin/bash "$img" -c 'openssl list -providers; echo rc=$?'
+          echo "===== 3. same as root"
+          docker run --rm -u 0 --entrypoint /bin/bash "$img" -c 'openssl list -providers; echo rc=$?'
+          echo "===== 4. file perms"
+          docker run --rm --entrypoint /bin/bash "$img" -c 'ls -la /usr/lib64/ossl-modules/ /etc/pki/tls/fips_local.cnf /etc/vector/openssl-fips.cnf; id'
+          echo "===== 5. vector --version with FIPS env + backtrace"
+          docker run --rm --entrypoint /bin/bash -e RUST_BACKTRACE=full "$img" -c '/usr/bin/vector --version; echo rc=$?'
+          echo "===== 6. vector boot with FIPS env, stderr visible, 10s"
+          docker run --rm --entrypoint /bin/bash -e RUST_BACKTRACE=full "$img" -c 'timeout 10 /usr/bin/vector -c /etc/vector/vector.yaml; echo rc=$?' 2>&1 | tail -20
+          echo "===== 7. dmesg tail (SIGILL/SIGSYS traces)"
+          sudo dmesg | tail -15 || true
