@@ -31,7 +31,7 @@ jobs:
       - uses: actions/cache@v4
         with:
           path: build/artifacts/
-          key: vector-bin-${{ hashFiles('ci/pins.sh', 'ci/features-fips.txt', 'ci/forbidden-crates.txt', 'ci/compile-in-container.sh', 'Containerfile.builder') }}-amd64
+          key: vector-bin-${{ hashFiles('ci/pins.sh', 'ci/features-fips.txt', 'ci/forbidden-crates.txt', 'ci/crate-bumps.txt', 'ci/compile-in-container.sh', 'Containerfile.builder') }}-amd64
       - uses: actions/cache@v4
         with:
           path: build/cargo/

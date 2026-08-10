@@ -1,0 +1,16 @@
+# Security bumps applied on top of upstream Vector's Cargo.lock.
+#
+# Upstream pins its lock per release; when an advisory lands with a fix in a
+# semver-compatible version, waiting for the next Vector release would leave
+# a known-fixable finding failing ci/scan.sh's gate. Each line here is
+# applied by ci/compile-in-container.sh as
+#     cargo update -p <name>@<from> --precise <to>
+# and is deliberately exact: when a Vector version bump changes the
+# installed version, the stale line FAILS the build loudly so it gets
+# reviewed and removed rather than silently skipped.
+#
+# Format: <name>@<from> <to> <advisory> — '#' comments.
+#
+# quinn-proto: QUIC implementation (via hickory DNS). Remote memory
+# exhaustion from unbounded out-of-order stream reassembly.
+quinn-proto@0.11.14 0.11.15 GHSA-4w2j-m93h-cj5j

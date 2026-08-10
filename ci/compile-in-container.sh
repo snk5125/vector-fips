@@ -48,6 +48,15 @@ if git diff Cargo.lock | grep -E '^\+name = '; then
 fi
 echo "== lock settled ($(git diff --numstat Cargo.lock | awk '{print $2" removals, "$1" additions"}'))"
 
+# --- pinned security bumps (ci/crate-bumps.txt) -----------------------------
+# Exact from->to updates for advisories fixed in semver-compatible releases.
+# A stale line (upstream moved past <from>) fails loudly for review.
+while read -r spec to advisory; do
+  case "$spec" in ''|\#*) continue ;; esac
+  echo "== crate bump: $spec -> $to ($advisory)"
+  cargo update -p "$spec" --precise "$to"
+done < /work/ci/crate-bumps.txt
+
 # --- gate: forbidden crypto crates must be absent from the final graph ------
 cargo tree -p vector --no-default-features -F "$features" --prefix none -e normal --locked -q \
   | awk '{print $1" "$2}' | sort -u > /work/artifacts/cargo-tree.txt
