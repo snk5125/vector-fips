@@ -12,7 +12,7 @@
 # validated provider.
 # Bootstrap default: the locally built base (ci/build.sh always supplies it);
 # the base workflow rewrites this ARG to the published digest pin.
-ARG BASE_IMAGE=ghcr.io/snk5125/vector-fips/ubi9-patched:2026-09-07@sha256:a359e8445c2c62a9b45510eb286abe0be52a9e6a95c57760a401042cba614840
+ARG BASE_IMAGE=ghcr.io/snk5125/vector-fips/ubi9-patched:2026-09-14@sha256:e018530a0d19995cc764e633471f26d79bf7af2c925675fe5c23078229e078e7
 
 FROM ${BASE_IMAGE}
 
